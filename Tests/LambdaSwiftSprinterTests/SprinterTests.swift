@@ -306,6 +306,39 @@ final class SprinterTests: XCTestCase {
         XCTAssertEqual(sprinter?.counter, 1)
 //        XCTAssertNil(ProcessInfo.processInfo.environment["_X_AMZN_TRACE_ID"], "trace-id")
     }
+    
+    func testPerformanceHelloWorld() {
+        let environment = Fixtures.validEnvironment
+        let sprinter = try? Sprinter<LambdaAPIMock>(environment: environment)
+        let client = sprinter?.apiClient
+        client?.responseHeaderFields = Fixtures.validHeaders
+        
+        client?.onGetNext = {
+            sprinter?.cancel = true
+        }
+        
+        XCTAssertNotNil(sprinter)
+        
+        class Lambda: LambdaHandler {
+            func commonHandler(event: Data, context: Context) -> LambdaResult {
+                guard let data = "Hello World!".data(using: .utf8) else {
+                    preconditionFailure()
+                }
+                return .success(data)
+            }
+        }
+
+        let lambda = Lambda()
+        sprinter?.register(handler: "handler", lambda: lambda)
+
+        measure {
+            do {
+                try sprinter?.run()
+            } catch {
+                XCTFail()
+            }
+        }
+    }
 
     static var allTests = [
         ("testInit", testInit),
@@ -318,5 +351,6 @@ final class SprinterTests: XCTestCase {
         ("testSprinterRun_When_Success", testSprinterRun_When_Success),
         ("testSprinterRun_When_MissingHandler", testSprinterRun_When_MissingHandler),
         ("testSprinterRun_When_ContextThrow", testSprinterRun_When_ContextThrow),
+        ("testPerformanceHelloWorld", testPerformanceHelloWorld),
     ]
 }

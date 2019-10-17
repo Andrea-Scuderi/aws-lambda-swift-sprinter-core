@@ -25,6 +25,8 @@ public class LambdaApiCURL: LambdaAPI {
     public required init(awsLambdaRuntimeAPI: String) throws {
         let configuration = URLSessionConfiguration.default
         configuration.timeoutIntervalForRequest = LambdaApiCURL.timeoutIntervalForRequest
+        configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
+        configuration.networkServiceType = .video
         self.urlSession = URLSession(configuration: configuration)
         self.builder = try LambdaRuntimeRequestBuilder(awsLambdaRuntimeAPI: awsLambdaRuntimeAPI)
     }
@@ -77,22 +79,21 @@ public class LambdaApiCURL: LambdaAPI {
 }
 
 extension URLSession {
+    
     internal func synchronousDataTask(with urlRequest: URLRequest) -> (Data?, URLResponse?, Error?) {
         var data: Data?
         var response: URLResponse?
         var error: Error?
-
-        let dispatchGroup = DispatchGroup()
-        dispatchGroup.enter()
+        let semaphore = DispatchSemaphore(value: 0)
 
         let dataTask = self.dataTask(with: urlRequest) { pData, pResponse, pError in
             data = pData
             response = pResponse
             error = pError
-            dispatchGroup.leave()
+            semaphore.signal()
         }
         dataTask.resume()
-        dispatchGroup.wait()
+        semaphore.wait()
         return (data, response, error)
     }
 }

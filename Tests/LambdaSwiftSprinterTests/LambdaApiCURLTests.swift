@@ -214,12 +214,31 @@ class LambdaApiCURLTests: XCTestCase {
         XCTAssertNoThrow(try api?.postInitializationError(error: error))
     }
     
+    func testSynchronousDataTaskPerformanceTest() {
+        
+        let url = urlBuilder.nextInvocationURL()
+        URLProtocolMock.testURLs = [url: (validData, httpResponse, nil)]
+        var response: (event: Data, responseHeaders: [AnyHashable: Any])?
+        guard let request = api?.builder.getNextInvocationRequest() else {
+            XCTFail()
+            return
+        }
+
+        measure {
+            response = try? api?.synchronousDataTask(with: request)
+        }
+        XCTAssertNotNil(response?.event)
+        XCTAssertNotNil(response?.responseHeaders)
+        XCTAssertEqual(response?.responseHeaders.count, 1)
+    }
+    
     static var allTests = [
         ("testInit", testInit),
         ("testGetNextInvocation", testGetNextInvocation),
         ("testPostInvocationResponse", testPostInvocationResponse),
         ("testPostInvocationError", testPostInvocationError),
         ("testPostInitializationError", testPostInitializationError),
+        ("testSynchronousDataTaskPerformanceTest", testSynchronousDataTaskPerformanceTest),
     ]
 
 }
